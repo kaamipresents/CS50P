@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./Lecture 4 - Libraries/Practice/problem1/math_utils"
+    ]
+}
