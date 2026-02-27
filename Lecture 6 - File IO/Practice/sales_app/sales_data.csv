@@ -1,0 +1,11 @@
+order_id,customer,product,category,quantity,price
+1001,Ali,Laptop,Electronics,1,1200
+1002,Kami,Mouse,Electronics,2,25
+1003,Sara,Keyboard,Electronics,1,75
+1004,Ahmed,Shampoo,Personal Care,3,10
+1005,Kami,Headphones,Electronics,1,150
+1006,Sara,Soap,Personal Care,5,3
+1007,Ali,Monitor,Electronics,1,300
+1008,Ahmed,Toothpaste,Personal Care,2,4
+1009,Kami,Laptop,Electronics,1,1200
+1010,Sara,Conditioner,Personal Care,2,12
