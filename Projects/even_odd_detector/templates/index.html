@@ -1,0 +1,11 @@
+<h1>Hello to the Even Odd Checker</h1>
+<form action="/" method="post">
+    <input type="text" name="number" required placeholder="Enter Number">
+    <button type="submit">Check Even/Odd</button>
+</form>
+{% if result %}
+    <h2>Result: {{ result }}</h2>
+{% endif %}
+{% if error %}
+    <h2>Error: {{ error }}</h2>
+{% endif %}

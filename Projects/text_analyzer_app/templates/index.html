@@ -1,0 +1,13 @@
+<h1>Welcome to the Text Analyzer App</h1>
+<p>Enter your text below to analyze its content.</p>
+<form method="post" action="/">
+    <div><textarea resize="none" name="text" rows="10" cols="50" placeholder="Enter your text here..."></textarea></div><br>
+    <input type="submit" value="Analyze">
+</form>
+{% if analysis %}
+    <h2>Analysis Results:</h2>
+    <p><strong>Word Count:</strong> {{ analysis.word_count }}</p>
+    <p><strong>Character Count:</strong> {{ analysis.character_count }}</p>
+{% else %}
+    <p>No text entered yet. Please enter some text to analyze.</p>
+{% endif %}
