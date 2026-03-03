@@ -1,0 +1,3 @@
+# This directory holds runtime-generated files.
+# greetings.json and greetings.csv are created automatically by the app.
+# They are excluded from version control via .gitignore.

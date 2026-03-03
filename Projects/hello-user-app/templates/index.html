@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Hello App — Enter Your Name{% endblock %}
+
+{% block head %}
+<style>
+  /* ─── Hero section ───────────────────────────────────── */
+  .hero {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Decorative background lines */
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 39px,
+        var(--border) 39px,
+        var(--border) 40px
+      );
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* Large decorative number */
+  .hero-deco {
+    position: absolute;
+    right: -2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--font-disp);
+    font-size: clamp(14rem, 28vw, 24rem);
+    font-weight: 700;
+    color: var(--cream);
+    line-height: 1;
+    pointer-events: none;
+    user-select: none;
+    letter-spacing: -0.06em;
+  }
+
+  .hero-inner {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 620px;
+    padding: 5rem 1.5rem 4rem;
+  }
+
+  /* ─── Eyebrow label ──────────────────────────────────── */
+  .eyebrow {
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 24px;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  /* ─── Headline ───────────────────────────────────────── */
+  .headline {
+    font-family: var(--font-disp);
+    font-size: clamp(2.8rem, 6vw, 4.5rem);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 1.4rem;
+  }
+  .headline em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  /* ─── Sub ────────────────────────────────────────────── */
+  .subtext {
+    color: var(--muted);
+    font-size: 1.05rem;
+    line-height: 1.7;
+    max-width: 460px;
+    margin-bottom: 2.4rem;
+  }
+
+  /* ─── Form ───────────────────────────────────────────── */
+  .form-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .form-group { flex: 1; min-width: 200px; }
+
+  label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 300;
+    color: var(--ink);
+    background: white;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  input[type="text"]:focus {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px rgba(15,14,13,0.06);
+  }
+  input[type="text"].has-error { border-color: var(--error); }
+
+  .btn-submit {
+    margin-top: 1.5rem; /* aligns with input when label is above */
+    padding: 0.8rem 2.2rem;
+    white-space: nowrap;
+  }
+
+  /* ─── Counter badge ──────────────────────────────────── */
+  .visitor-badge {
+    margin-top: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    padding: 0.4rem 1rem 0.4rem 0.4rem;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 2rem;
+  }
+  .visitor-dot {
+    width: 8px; height: 8px;
+    background: var(--success);
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px rgba(58,122,82,0.15);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <div class="hero-deco">Hi</div>
+  <div class="hero-inner container">
+
+    <p class="eyebrow fade-up">Flask Starter App</p>
+
+    <h1 class="headline fade-up-2">
+      Say <em>hello</em><br>to the world.
+    </h1>
+
+    <p class="subtext fade-up-3">
+      Enter your name below and receive a personalised greeting.
+      Every visitor is remembered — check the history page.
+    </p>
+
+    <!-- Error alert -->
+    {% if error %}
+    <div class="alert alert-error fade-up-3" role="alert">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M8 5v3.5M8 10.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- Greeting form -->
+    <form action="/greet" method="POST" class="fade-up-3" novalidate>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name">Your name</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="e.g. Alice"
+            maxlength="50"
+            autocomplete="given-name"
+            autofocus
+            class="{% if error %}has-error{% endif %}"
+          />
+        </div>
+        <button type="submit" class="btn btn-primary btn-submit">
+          Greet me →
+        </button>
+      </div>
+    </form>
+
+    <!-- Visitor count -->
+    <div class="visitor-badge fade-up-4">
+      <span class="visitor-dot"></span>
+      {{ visitor_count }} visitor{{ 's' if visitor_count != 1 else '' }} greeted so far
+    </div>
+
+  </div>
+</div>
+{% endblock %}

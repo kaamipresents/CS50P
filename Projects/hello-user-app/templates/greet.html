@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Hello, {{ name }}!{% endblock %}
+
+{% block head %}
+<style>
+  /* ─── Greeting stage ─────────────────────────────────── */
+  .stage {
+    min-height: calc(100vh - 120px);
+    display: grid;
+    place-items: center;
+    padding: 4rem 1.5rem;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 540px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 3.5rem 3rem;
+    box-shadow: var(--shadow);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Top gold accent bar */
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold-lt), var(--gold));
+  }
+
+  /* ─── Wave emoji ─────────────────────────────────────── */
+  .wave {
+    font-size: 3.5rem;
+    display: block;
+    margin-bottom: 1.5rem;
+    animation: wave 1.4s ease-in-out 0.3s both;
+    transform-origin: 75% 75%;
+  }
+  @keyframes wave {
+    0%   { transform: rotate(0deg);   opacity: 0; }
+    10%  { transform: rotate(14deg);  opacity: 1; }
+    20%  { transform: rotate(-8deg); }
+    30%  { transform: rotate(14deg); }
+    40%  { transform: rotate(-4deg); }
+    50%  { transform: rotate(10deg); }
+    60%  { transform: rotate(0deg);  }
+    100% { transform: rotate(0deg);  opacity: 1; }
+  }
+
+  /* ─── Name headline ──────────────────────────────────── */
+  .greeting-name {
+    font-family: var(--font-disp);
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.6rem;
+    color: var(--ink);
+  }
+
+  .greeting-message {
+    font-size: 1.05rem;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+  }
+
+  /* ─── Divider ────────────────────────────────────────── */
+  .card-divider {
+    width: 48px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold-lt), var(--gold));
+    margin: 2rem auto;
+    border-radius: 2px;
+  }
+
+  /* ─── Actions ────────────────────────────────────────── */
+  .card-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* ─── Confetti burst ──────────────────────────────────── */
+  .confetti-wrap {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    overflow: hidden;
+  }
+  .dot {
+    position: absolute;
+    top: -10px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: fall linear forwards;
+  }
+  @keyframes fall {
+    to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Confetti layer -->
+<div class="confetti-wrap" id="confetti" aria-hidden="true"></div>
+
+<div class="stage">
+  <div class="card fade-up">
+    <span class="wave" role="img" aria-label="Waving hand">👋</span>
+
+    <h1 class="greeting-name">Hello, {{ name }}!</h1>
+    <p class="greeting-message">{{ greeting }}</p>
+
+    <div class="card-divider"></div>
+
+    <p class="greeting-message" style="font-size:0.88rem;">
+      Your visit has been recorded. Check the history page to see everyone who dropped by.
+    </p>
+
+    <div class="card-actions" style="margin-top:2rem;">
+      <a href="/" class="btn btn-primary">Greet someone else →</a>
+      <a href="/history" class="btn btn-ghost">View history</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Lightweight confetti burst — pure JS, no library
+  (function () {
+    const colors = ['#c9933a','#e8c87a','#3a7a52','#0f0e0d','#f0ebe1'];
+    const wrap = document.getElementById('confetti');
+    const count = 60;
+    for (let i = 0; i < count; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+      dot.style.left        = Math.random() * 100 + 'vw';
+      dot.style.background  = colors[Math.floor(Math.random() * colors.length)];
+      dot.style.width       = (6 + Math.random() * 8) + 'px';
+      dot.style.height      = (6 + Math.random() * 8) + 'px';
+      dot.style.animationDuration  = (1.2 + Math.random() * 2) + 's';
+      dot.style.animationDelay     = (Math.random() * 0.8) + 's';
+      wrap.appendChild(dot);
+    }
+    setTimeout(() => wrap.remove(), 4000);
+  })();
+</script>
+{% endblock %}

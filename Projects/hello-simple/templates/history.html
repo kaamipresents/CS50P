@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>History</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 60px auto; padding: 0 20px; }
+    li { padding: 6px 0; border-bottom: 1px solid #eee; }
+    a { color: #111; }
+  </style>
+</head>
+<body>
+
+  <h1>Greeting History</h1>
+
+  {% if greetings %}
+    <p>{{ greetings|length }} visitor(s) so far:</p>
+    <ul>
+      {% for name in greetings %}
+        <li>{{ name }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No one has visited yet.</p>
+  {% endif %}
+
+  <br>
+  <a href="/">← Back to home</a>
+
+</body>
+</html>

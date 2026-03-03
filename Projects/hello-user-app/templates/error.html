@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}{{ code }} — Hello App{% endblock %}
+
+{% block head %}
+<style>
+  .error-stage {
+    min-height: calc(100vh - 120px);
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 4rem 1.5rem;
+  }
+  .error-code {
+    font-family: var(--font-disp);
+    font-size: clamp(5rem, 18vw, 12rem);
+    font-weight: 700;
+    color: var(--cream);
+    line-height: 1;
+    letter-spacing: -0.05em;
+    margin-bottom: 0;
+    border: 3px solid var(--border);
+    padding: 0.2em 0.4em;
+    border-radius: 8px;
+  }
+  .error-message {
+    margin-top: 2rem;
+    font-size: 1.1rem;
+    color: var(--muted);
+    margin-bottom: 2rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="error-stage">
+  <div>
+    <div class="error-code fade-up">{{ code }}</div>
+    <p class="error-message fade-up-2">{{ message }}</p>
+    <a href="/" class="btn btn-primary fade-up-3">← Go home</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Greeting History — Hello App{% endblock %}
+
+{% block head %}
+<style>
+  /* ─── Page header ────────────────────────────────────── */
+  .page-header {
+    border-bottom: 1px solid var(--border);
+    padding: 3.5rem 0 2.5rem;
+    margin-bottom: 2.5rem;
+  }
+  .page-header .eyebrow {
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .page-header .eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 24px; height: 1px;
+    background: var(--gold);
+  }
+  .page-title {
+    font-family: var(--font-disp);
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 400;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+  .page-subtitle {
+    color: var(--muted);
+    margin-top: 0.6rem;
+    font-size: 0.95rem;
+  }
+
+  /* ─── Stats row ──────────────────────────────────────── */
+  .stats-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  .stat-chip {
+    padding: 0.4rem 1rem;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .stat-chip strong { color: var(--ink); font-weight: 500; }
+
+  /* ─── History table ──────────────────────────────────── */
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  .history-table thead tr {
+    border-bottom: 2px solid var(--ink);
+  }
+  .history-table th {
+    text-align: left;
+    padding: 0 0.75rem 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .history-table th:first-child { padding-left: 0; }
+  .history-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .history-table tbody tr:hover { background: var(--cream); }
+  .history-table td {
+    padding: 0.85rem 0.75rem;
+    vertical-align: middle;
+  }
+  .history-table td:first-child { padding-left: 0; }
+
+  .td-name {
+    font-family: var(--font-disp);
+    font-size: 1rem;
+    font-weight: 400;
+  }
+  .td-message { color: var(--muted); max-width: 340px; }
+  .td-time {
+    font-size: 0.78rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ─── Row index badge ────────────────────────────────── */
+  .row-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px; height: 24px;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    font-size: 0.72rem;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  /* ─── Empty state ────────────────────────────────────── */
+  .empty-state {
+    text-align: center;
+    padding: 5rem 2rem;
+    color: var(--muted);
+  }
+  .empty-state .big { font-size: 3rem; margin-bottom: 1rem; }
+  .empty-state p { margin-bottom: 1.5rem; }
+
+  /* ─── Bottom actions ─────────────────────────────────── */
+  .page-actions {
+    display: flex;
+    gap: 0.75rem;
+    padding: 2.5rem 0 4rem;
+    flex-wrap: wrap;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <div class="page-header fade-up">
+    <p class="eyebrow">All visits</p>
+    <h1 class="page-title">Greeting History</h1>
+    <p class="page-subtitle">Every person who said hello, newest first.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row fade-up-2">
+    <div class="stat-chip">
+      <strong>{{ visitor_count }}</strong> total visitor{{ 's' if visitor_count != 1 else '' }}
+    </div>
+    <div class="stat-chip">
+      Stored in <strong>greetings.json</strong>
+    </div>
+  </div>
+
+  {% if greetings %}
+  <!-- Table -->
+  <div class="fade-up-2">
+    <table class="history-table" role="table">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Name</th>
+          <th scope="col">Message</th>
+          <th scope="col">Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in greetings %}
+        <tr>
+          <td><span class="row-num">{{ loop.index }}</span></td>
+          <td class="td-name">{{ entry.name }}</td>
+          <td class="td-message">{{ entry.message }}</td>
+          <td class="td-time">{{ entry.timestamp }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% else %}
+  <!-- Empty state -->
+  <div class="empty-state fade-up-2">
+    <div class="big">👋</div>
+    <p>No one has said hello yet.<br>Be the first!</p>
+    <a href="/" class="btn btn-primary">Greet me first →</a>
+  </div>
+  {% endif %}
+
+  <div class="page-actions fade-up-3">
+    <a href="/" class="btn btn-primary">← Back to home</a>
+    <a href="/api/greetings" target="_blank" class="btn btn-ghost">View raw JSON</a>
+  </div>
+
+</div>
+{% endblock %}
