@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Add Expense — Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Add New Expense</h1>
+    <p class="subtitle">Record a new spending entry.</p>
+</div>
+
+<div class="form-card">
+    <form action="{{ url_for('add') }}" method="POST" novalidate>
+
+        <!-- Amount -->
+        <div class="form-group">
+            <label for="amount" class="form-label">Amount ($) <span class="required">*</span></label>
+            <div class="input-prefix-wrapper">
+                <span class="input-prefix">$</span>
+                <input
+                    type="number"
+                    id="amount"
+                    name="amount"
+                    class="form-input input-with-prefix"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0.01"
+                    value="{{ form_data.get('amount', '') }}"
+                    required
+                />
+            </div>
+        </div>
+
+        <!-- Category -->
+        <div class="form-group">
+            <label for="category" class="form-label">Category <span class="required">*</span></label>
+            <select id="category" name="category" class="form-select" required>
+                <option value="">— Select a category —</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}"
+                    {% if form_data.get('category') == cat %}selected{% endif %}>
+                    {{ cat }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+            <label for="description" class="form-label">Description <span class="required">*</span></label>
+            <input
+                type="text"
+                id="description"
+                name="description"
+                class="form-input"
+                placeholder="e.g. Lunch at restaurant"
+                maxlength="200"
+                value="{{ form_data.get('description', '') }}"
+                required
+            />
+            <p class="form-hint">Max 200 characters.</p>
+        </div>
+
+        <!-- Buttons -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">💾 Save Expense</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+
+    </form>
+</div>
+{% endblock %}
