@@ -1,22 +1,20 @@
 """
 logic.py — Core business logic for the Smart Expense Tracker (Web Version).
-Storage backend: SQLite (via Python's built-in sqlite3 module).
-Business logic is cleanly separated from Flask routing (app.py).
+Storage backend: PostgreSQL via psycopg2.
+Connection string is read from the DATABASE_URL environment variable.
 """
 
-import json
 import os
-import sqlite3
 from datetime import datetime
+
+import psycopg2
+import psycopg2.extras  # RealDictCursor
 
 # ─────────────────────────────────────────────
 #  STORAGE CONFIGURATION
 # ─────────────────────────────────────────────
 
-DB_FILE = os.path.join(os.path.dirname(__file__), "data", "expenses.db")
-
-# Legacy JSON file — used only for one-time migration on first boot
-_LEGACY_JSON = os.path.join(os.path.dirname(__file__), "data", "expenses.json")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 VALID_CATEGORIES = [
     "Food",
@@ -35,76 +33,49 @@ VALID_CATEGORIES = [
 # ─────────────────────────────────────────────
 
 def _get_connection():
-    """Return a configured SQLite connection with Row factory."""
-    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row          # allows dict-like column access
-    conn.execute("PRAGMA journal_mode=WAL") # safe concurrent writes
+    """
+    Open and return a new psycopg2 connection.
+    Raises RuntimeError with a helpful message if DATABASE_URL is not set.
+    """
+    if not DATABASE_URL:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is not set. "
+            "Add it in your Vercel project settings (or .env locally)."
+        )
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
     return conn
 
 
 def init_db():
     """
-    Create the expenses table if it doesn't exist, then migrate any
-    legacy JSON data into SQLite (runs once automatically).
+    Create the expenses table if it doesn't already exist.
+    Called once at app startup (from app.py).
     """
     with _get_connection() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS expenses (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                amount      REAL    NOT NULL,
-                category    TEXT    NOT NULL,
-                description TEXT    NOT NULL,
-                date        TEXT    NOT NULL
-            )
-        """)
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS expenses (
+                    id          SERIAL PRIMARY KEY,
+                    amount      NUMERIC(12, 2) NOT NULL,
+                    category    TEXT           NOT NULL,
+                    description TEXT           NOT NULL,
+                    date        TEXT           NOT NULL
+                )
+            """)
         conn.commit()
-
-    _migrate_legacy_json()
-
-
-def _migrate_legacy_json():
-    """
-    If a legacy expenses.json exists and the DB is empty, import the
-    JSON records into SQLite, then rename the JSON file so migration
-    doesn't run again.
-    """
-    if not os.path.exists(_LEGACY_JSON):
-        return
-
-    try:
-        with open(_LEGACY_JSON, "r") as f:
-            records = json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return  # silently skip a corrupt file
-
-    if not records:
-        return
-
-    with _get_connection() as conn:
-        # Only migrate when the table is empty to avoid duplicates
-        count = conn.execute("SELECT COUNT(*) FROM expenses").fetchone()[0]
-        if count > 0:
-            return
-
-        conn.executemany(
-            """INSERT INTO expenses (id, amount, category, description, date)
-               VALUES (:id, :amount, :category, :description, :date)""",
-            records,
-        )
-        conn.commit()
-
-    # Rename so future starts skip migration
-    os.rename(_LEGACY_JSON, _LEGACY_JSON + ".migrated")
-
-
-def _row_to_dict(row):
-    """Convert a sqlite3.Row to a plain dict."""
-    return dict(row)
 
 
 def _get_timestamp():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _row_to_dict(row):
+    """Convert a RealDictRow to a plain python dict with native types."""
+    d = dict(row)
+    # psycopg2 returns NUMERIC as Decimal — convert to float for consistency
+    if "amount" in d and d["amount"] is not None:
+        d["amount"] = float(d["amount"])
+    return d
 
 
 # ─────────────────────────────────────────────
@@ -156,32 +127,34 @@ def add_expense(amount_str, category, description):
     description = validate_description(description)
 
     with _get_connection() as conn:
-        cursor = conn.execute(
-            """INSERT INTO expenses (amount, category, description, date)
-               VALUES (?, ?, ?, ?)""",
-            (amount, category, description, _get_timestamp()),
-        )
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO expenses (amount, category, description, date)
+                   VALUES (%s, %s, %s, %s)
+                   RETURNING *""",
+                (amount, category, description, _get_timestamp()),
+            )
+            new_row = cur.fetchone()
         conn.commit()
-        new_id = cursor.lastrowid
 
-    return get_expense_by_id(new_id)
+    return _row_to_dict(new_row)
 
 
 def get_all_expenses():
     """Return all expenses sorted by date descending."""
     with _get_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM expenses ORDER BY date DESC"
-        ).fetchall()
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM expenses ORDER BY date DESC")
+            rows = cur.fetchall()
     return [_row_to_dict(r) for r in rows]
 
 
 def get_expense_by_id(expense_id):
     """Return a single expense dict or None if not found."""
     with _get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM expenses WHERE id = ?", (expense_id,)
-        ).fetchone()
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM expenses WHERE id = %s", (expense_id,))
+            row = cur.fetchone()
     return _row_to_dict(row) if row else None
 
 
@@ -200,12 +173,13 @@ def update_expense(expense_id, amount_str=None, category=None, description=None)
     new_description = validate_description(description) if description is not None else existing["description"]
 
     with _get_connection() as conn:
-        conn.execute(
-            """UPDATE expenses
-               SET amount = ?, category = ?, description = ?
-               WHERE id = ?""",
-            (new_amount, new_category, new_description, expense_id),
-        )
+        with conn.cursor() as cur:
+            cur.execute(
+                """UPDATE expenses
+                   SET amount = %s, category = %s, description = %s
+                   WHERE id = %s""",
+                (new_amount, new_category, new_description, expense_id),
+            )
         conn.commit()
 
     return get_expense_by_id(expense_id)
@@ -220,7 +194,8 @@ def delete_expense(expense_id):
         raise ValueError(f"No expense found with ID {expense_id}.")
 
     with _get_connection() as conn:
-        conn.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM expenses WHERE id = %s", (expense_id,))
         conn.commit()
 
     return True
@@ -236,10 +211,7 @@ def get_summary():
     Returns:
         dict: total, count, by_category, highest_expense, average, percentages.
     """
-    with _get_connection() as conn:
-        rows = conn.execute("SELECT * FROM expenses").fetchall()
-
-    expenses = [_row_to_dict(r) for r in rows]
+    expenses = get_all_expenses()
 
     if not expenses:
         return {
@@ -277,11 +249,13 @@ def get_summary():
 
 
 def filter_by_category(category):
-    """Return expenses matching the given category."""
+    """Return expenses matching the given category, sorted by date descending."""
     category = validate_category(category)
     with _get_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM expenses WHERE category = ? ORDER BY date DESC",
-            (category,),
-        ).fetchall()
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM expenses WHERE category = %s ORDER BY date DESC",
+                (category,),
+            )
+            rows = cur.fetchall()
     return [_row_to_dict(r) for r in rows]

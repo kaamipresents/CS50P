@@ -21,7 +21,7 @@ app = Flask(__name__)
 # Secret key required for flash messages (session-based feedback)
 app.secret_key = "your-secret-key-change-in-production"
 
-# Initialise the SQLite database (creates table + migrates legacy JSON if present)
+# Initialise the PostgreSQL database (creates expenses table if not present)
 init_db()
 
 
