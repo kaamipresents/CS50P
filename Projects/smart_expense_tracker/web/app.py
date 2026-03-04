@@ -5,6 +5,7 @@ All HTTP routing lives here. Business logic is delegated to logic.py.
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from logic import (
+    init_db,
     add_expense,
     get_all_expenses,
     get_expense_by_id,
@@ -19,6 +20,9 @@ app = Flask(__name__)
 
 # Secret key required for flash messages (session-based feedback)
 app.secret_key = "your-secret-key-change-in-production"
+
+# Initialise the SQLite database (creates table + migrates legacy JSON if present)
+init_db()
 
 
 # ─────────────────────────────────────────────

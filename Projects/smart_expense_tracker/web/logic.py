@@ -1,18 +1,22 @@
 """
 logic.py — Core business logic for the Smart Expense Tracker (Web Version).
-This file is identical in structure to the CLI version — only the DATA_FILE
-path differs. This is intentional: pure logic, zero framework dependencies.
+Storage backend: SQLite (via Python's built-in sqlite3 module).
+Business logic is cleanly separated from Flask routing (app.py).
 """
 
 import json
 import os
+import sqlite3
 from datetime import datetime
 
 # ─────────────────────────────────────────────
 #  STORAGE CONFIGURATION
 # ─────────────────────────────────────────────
 
-DATA_FILE = os.path.join(os.path.dirname(__file__), "data", "expenses.json")
+DB_FILE = os.path.join(os.path.dirname(__file__), "data", "expenses.db")
+
+# Legacy JSON file — used only for one-time migration on first boot
+_LEGACY_JSON = os.path.join(os.path.dirname(__file__), "data", "expenses.json")
 
 VALID_CATEGORIES = [
     "Food",
@@ -27,38 +31,76 @@ VALID_CATEGORIES = [
 
 
 # ─────────────────────────────────────────────
-#  STORAGE LAYER
+#  DATABASE HELPERS
 # ─────────────────────────────────────────────
 
-def _ensure_data_file():
-    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
-    if not os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "w") as f:
-            json.dump([], f)
+def _get_connection():
+    """Return a configured SQLite connection with Row factory."""
+    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row          # allows dict-like column access
+    conn.execute("PRAGMA journal_mode=WAL") # safe concurrent writes
+    return conn
 
 
-def load_expenses():
-    _ensure_data_file()
+def init_db():
+    """
+    Create the expenses table if it doesn't exist, then migrate any
+    legacy JSON data into SQLite (runs once automatically).
+    """
+    with _get_connection() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS expenses (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                amount      REAL    NOT NULL,
+                category    TEXT    NOT NULL,
+                description TEXT    NOT NULL,
+                date        TEXT    NOT NULL
+            )
+        """)
+        conn.commit()
+
+    _migrate_legacy_json()
+
+
+def _migrate_legacy_json():
+    """
+    If a legacy expenses.json exists and the DB is empty, import the
+    JSON records into SQLite, then rename the JSON file so migration
+    doesn't run again.
+    """
+    if not os.path.exists(_LEGACY_JSON):
+        return
+
     try:
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError) as e:
-        raise RuntimeError(f"Could not read expenses file: {e}")
+        with open(_LEGACY_JSON, "r") as f:
+            records = json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return  # silently skip a corrupt file
+
+    if not records:
+        return
+
+    with _get_connection() as conn:
+        # Only migrate when the table is empty to avoid duplicates
+        count = conn.execute("SELECT COUNT(*) FROM expenses").fetchone()[0]
+        if count > 0:
+            return
+
+        conn.executemany(
+            """INSERT INTO expenses (id, amount, category, description, date)
+               VALUES (:id, :amount, :category, :description, :date)""",
+            records,
+        )
+        conn.commit()
+
+    # Rename so future starts skip migration
+    os.rename(_LEGACY_JSON, _LEGACY_JSON + ".migrated")
 
 
-def save_expenses(expenses):
-    _ensure_data_file()
-    try:
-        with open(DATA_FILE, "w") as f:
-            json.dump(expenses, f, indent=4)
-    except IOError as e:
-        raise RuntimeError(f"Could not write expenses file: {e}")
-
-
-def _generate_id(expenses):
-    if not expenses:
-        return 1
-    return max(e["id"] for e in expenses) + 1
+def _row_to_dict(row):
+    """Convert a sqlite3.Row to a plain dict."""
+    return dict(row)
 
 
 def _get_timestamp():
@@ -113,55 +155,74 @@ def add_expense(amount_str, category, description):
     category = validate_category(category)
     description = validate_description(description)
 
-    expenses = load_expenses()
-    new_expense = {
-        "id": _generate_id(expenses),
-        "amount": amount,
-        "category": category,
-        "description": description,
-        "date": _get_timestamp(),
-    }
-    expenses.append(new_expense)
-    save_expenses(expenses)
-    return new_expense
+    with _get_connection() as conn:
+        cursor = conn.execute(
+            """INSERT INTO expenses (amount, category, description, date)
+               VALUES (?, ?, ?, ?)""",
+            (amount, category, description, _get_timestamp()),
+        )
+        conn.commit()
+        new_id = cursor.lastrowid
+
+    return get_expense_by_id(new_id)
 
 
 def get_all_expenses():
-    expenses = load_expenses()
-    return sorted(expenses, key=lambda e: e["date"], reverse=True)
+    """Return all expenses sorted by date descending."""
+    with _get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM expenses ORDER BY date DESC"
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
 
 
 def get_expense_by_id(expense_id):
-    for expense in load_expenses():
-        if expense["id"] == expense_id:
-            return expense
-    return None
+    """Return a single expense dict or None if not found."""
+    with _get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM expenses WHERE id = ?", (expense_id,)
+        ).fetchone()
+    return _row_to_dict(row) if row else None
 
 
 def update_expense(expense_id, amount_str=None, category=None, description=None):
-    expenses = load_expenses()
-    target = next((e for e in expenses if e["id"] == expense_id), None)
-
-    if target is None:
+    """
+    Update one or more fields of an expense.
+    Raises ValueError if not found or validation fails.
+    Returns the updated expense dict.
+    """
+    existing = get_expense_by_id(expense_id)
+    if existing is None:
         raise ValueError(f"No expense found with ID {expense_id}.")
 
-    if amount_str is not None:
-        target["amount"] = validate_amount(amount_str)
-    if category is not None:
-        target["category"] = validate_category(category)
-    if description is not None:
-        target["description"] = validate_description(description)
+    new_amount = validate_amount(amount_str) if amount_str is not None else existing["amount"]
+    new_category = validate_category(category) if category is not None else existing["category"]
+    new_description = validate_description(description) if description is not None else existing["description"]
 
-    save_expenses(expenses)
-    return target
+    with _get_connection() as conn:
+        conn.execute(
+            """UPDATE expenses
+               SET amount = ?, category = ?, description = ?
+               WHERE id = ?""",
+            (new_amount, new_category, new_description, expense_id),
+        )
+        conn.commit()
+
+    return get_expense_by_id(expense_id)
 
 
 def delete_expense(expense_id):
-    expenses = load_expenses()
-    filtered = [e for e in expenses if e["id"] != expense_id]
-    if len(filtered) == len(expenses):
+    """
+    Delete an expense by ID.
+    Raises ValueError if not found.
+    """
+    if get_expense_by_id(expense_id) is None:
         raise ValueError(f"No expense found with ID {expense_id}.")
-    save_expenses(filtered)
+
+    with _get_connection() as conn:
+        conn.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
+        conn.commit()
+
     return True
 
 
@@ -175,7 +236,10 @@ def get_summary():
     Returns:
         dict: total, count, by_category, highest_expense, average, percentages.
     """
-    expenses = load_expenses()
+    with _get_connection() as conn:
+        rows = conn.execute("SELECT * FROM expenses").fetchall()
+
+    expenses = [_row_to_dict(r) for r in rows]
 
     if not expenses:
         return {
@@ -213,5 +277,11 @@ def get_summary():
 
 
 def filter_by_category(category):
+    """Return expenses matching the given category."""
     category = validate_category(category)
-    return [e for e in load_expenses() if e["category"] == category]
+    with _get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM expenses WHERE category = ? ORDER BY date DESC",
+            (category,),
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
