@@ -1,36 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}Smart Expense Tracker{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
+
 <body>
 
     <!-- ── NAVBAR ─────────────────────────────────── -->
     <nav class="navbar">
-        <div class="nav-brand">
+        <a href="{{ url_for('index') }}" class="nav-brand">
             <span class="brand-icon">💰</span>
             <span class="brand-name">ExpenseTracker</span>
-        </div>
-        <ul class="nav-links">
-            <li><a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">Dashboard</a></li>
-            <li><a href="{{ url_for('expenses') }}" class="{% if request.endpoint == 'expenses' %}active{% endif %}">Expenses</a></li>
-            <li><a href="{{ url_for('summary') }}" class="{% if request.endpoint == 'summary' %}active{% endif %}">Summary</a></li>
-            <li><a href="{{ url_for('add') }}" class="btn-nav">+ Add Expense</a></li>
+        </a>
+        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle Navigation">
+            ☰
+        </button>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="{{ url_for('index') }}"
+                    class="{% if request.endpoint == 'index' %}active{% endif %}">Dashboard</a></li>
+            <li><a href="{{ url_for('expenses') }}"
+                    class="{% if request.endpoint == 'expenses' %}active{% endif %}">Expenses</a></li>
+            <li><a href="{{ url_for('summary') }}"
+                    class="{% if request.endpoint == 'summary' %}active{% endif %}">Summary</a></li>
+            <li><a href="{{ url_for('add') }}" class="btn-nav-add">+ Add Expense</a></li>
         </ul>
     </nav>
 
     <!-- ── FLASH MESSAGES ─────────────────────────── -->
     {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="flash-container">
-                {% for category, message in messages %}
-                    <div class="flash flash-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            </div>
-        {% endif %}
+    {% if messages %}
+    <div class="flash-container">
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
     {% endwith %}
 
     <!-- ── MAIN CONTENT ───────────────────────────── -->
@@ -43,5 +51,18 @@
         <p>Smart Expense Tracker &copy; 2025 — Built with Flask + JSON Storage</p>
     </footer>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const navLinks = document.getElementById('navLinks');
+
+            if (mobileMenuBtn && navLinks) {
+                mobileMenuBtn.addEventListener('click', () => {
+                    navLinks.classList.toggle('show');
+                });
+            }
+        });
+    </script>
 </body>
+
 </html>

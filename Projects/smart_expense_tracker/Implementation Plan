@@ -1,0 +1,74 @@
+# Migrate Storage from SQLite to PostgreSQL
+
+The Vercel serverless environment has a **read-only filesystem**, so SQLite cannot persist data. The fix is to replace `sqlite3` with `psycopg2` and point it to a free PostgreSQL database (Neon, Supabase, or Vercel Postgres). The connection string is supplied via an environment variable — no credentials in code.
+
+> [!IMPORTANT]
+> **You will need a free PostgreSQL database URL before the app can run.**
+> Recommended: [Neon](https://neon.tech) (free tier, serverless Postgres, works great with Vercel).
+> After creating a database, copy the connection string — it looks like:
+> `postgresql://user:password@host/dbname?sslmode=require`
+> Set it as `DATABASE_URL` in your Vercel project's Environment Variables.
+
+## Proposed Changes
+
+### Storage Layer
+
+#### [MODIFY] [logic.py](file:///d:/Coding/Python/CS50/Projects/smart_expense_tracker/web/logic.py)
+
+- Remove all `sqlite3` imports and DB-file path config
+- Add `DATABASE_URL = os.environ["DATABASE_URL"]` (raises a clear error if not set)
+- Replace `_get_connection()` with a `psycopg2.connect(DATABASE_URL)` helper using `RealDictCursor` (returns rows as dicts automatically)
+- Replace SQLite `?` placeholders with `%s` (psycopg2 standard)
+- Replace `INTEGER PRIMARY KEY AUTOINCREMENT` with `SERIAL PRIMARY KEY` in `CREATE TABLE`
+- Keep `init_db()`, all CRUD functions, `get_summary()`, `filter_by_category()` — same signatures, same return types
+- Remove `_migrate_legacy_json()` — not applicable on serverless
+
+---
+
+### Dependencies
+
+#### [MODIFY] [requirements.txt](file:///d:/Coding/Python/CS50/Projects/smart_expense_tracker/web/requirements.txt)
+
+Add `psycopg2-binary` (includes compiled C driver, no system libs needed on Vercel):
+```
+flask==3.0.3
+gunicorn==22.0.0
+psycopg2-binary==2.9.9
+```
+
+---
+
+### Vercel Config
+
+#### [MODIFY] [vercel.json](file:///d:/Coding/Python/CS50/Projects/smart_expense_tracker/web/vercel.json)
+
+No structural changes needed. The `DATABASE_URL` env var is set in the Vercel dashboard, not this file.
+
+## Verification Plan
+
+### Automated (local)
+
+After changes, run against a real `DATABASE_URL` (or a local Postgres instance):
+
+```
+cd d:\Coding\Python\CS50\Projects\smart_expense_tracker\web
+$env:DATABASE_URL="postgresql://..."   # set your DB URL
+python -c "
+from logic import init_db, add_expense, get_all_expenses, get_summary, delete_expense
+init_db()
+e = add_expense('15.00', 'Food', 'Test')
+print('Add OK:', e)
+s = get_summary()
+print('Summary OK:', s['count'], 'expenses')
+delete_expense(e['id'])
+print('Delete OK')
+"
+```
+
+### Manual (Vercel)
+
+1. Set `DATABASE_URL` in Vercel → Project Settings → Environment Variables
+2. Re-deploy (`git push`)
+3. Visit the deployed URL — home dashboard should load with 0 errors
+4. Add an expense via `/add`, verify it appears on `/expenses`
+5. Edit and delete the expense — confirm no 500 errors

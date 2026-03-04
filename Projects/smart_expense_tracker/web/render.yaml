@@ -10,5 +10,5 @@ services:
     envVars:
       - key: FLASK_ENV
         value: production
-      - key: SECRET_KEY
+      - key: postgresql://neondb_owner:npg_pkVjbDf5ETO7@ep-rapid-hat-ah12gt87-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
         generateValue: true     # Render auto-generates a secure random value

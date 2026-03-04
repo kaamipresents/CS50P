@@ -19,7 +19,7 @@ from logic import (
 app = Flask(__name__)
 
 # Secret key required for flash messages (session-based feedback)
-app.secret_key = "your-secret-key-change-in-production"
+app.secret_key = "postgresql://neondb_owner:npg_pkVjbDf5ETO7@ep-rapid-hat-ah12gt87-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
 # Initialise the PostgreSQL database (creates expenses table if not present)
 init_db()
