@@ -1,3 +1,10 @@
-<h1>Form submitted successfully!</h1>
-<h2>Name: {{ name }}</h2>
-<h2>Email: {{ email }}
+<h1>{{ message }}</h1>
+{% if users %}
+    <ul>
+    {% for user in users %}
+        <li>{{ user[0] }} - {{ user[1] }}</li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>Currently there is no user</p>
+{% endif %}
