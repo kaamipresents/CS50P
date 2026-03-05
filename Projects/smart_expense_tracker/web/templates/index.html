@@ -87,7 +87,7 @@
             <tbody>
                 {% for expense in recent_expenses %}
                 <tr>
-                    <td class="td-id" data-label="ID">#{{ expense.id }}</td>
+                    <td class="td-id" data-label="ID">#{{ expense.display_id }}</td>
                     <td class="td-amount" data-label="Amount">${{ "%.2f"|format(expense.amount) }}</td>
                     <td data-label="Category"><span class="badge badge-{{ expense.category | lower }}">{{
                             expense.category }}</span></td>

@@ -248,7 +248,12 @@ def add_expense(user_id, amount_str, category, description):
 
 def get_all_expenses(user_id, limit=None):
     """Return expenses sorted by date descending for a specific user, with an optional limit."""
-    query = "SELECT * FROM expenses WHERE user_id = %s ORDER BY date DESC"
+    query = """
+        SELECT *, ROW_NUMBER() OVER (ORDER BY date ASC, id ASC) as display_id 
+        FROM expenses 
+        WHERE user_id = %s 
+        ORDER BY date DESC
+    """
     params = [user_id]
     
     if limit is not None:
@@ -266,7 +271,13 @@ def get_expense_by_id(expense_id, user_id):
     """Return a single expense dict or None if not found or doesn't belong to matched user."""
     with _get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM expenses WHERE id = %s AND user_id = %s", (expense_id, user_id))
+            cur.execute(
+                """SELECT * FROM (
+                       SELECT *, ROW_NUMBER() OVER (ORDER BY date ASC, id ASC) as display_id
+                       FROM expenses
+                       WHERE user_id = %s
+                   ) x WHERE id = %s""", (user_id, expense_id)
+            )
             row = cur.fetchone()
     return _row_to_dict(row) if row else None
 
@@ -385,8 +396,14 @@ def filter_by_category(category, user_id):
     with _get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT * FROM expenses WHERE category = %s AND user_id = %s ORDER BY date DESC",
-                (category, user_id),
+                """
+                SELECT * FROM (
+                    SELECT *, ROW_NUMBER() OVER (ORDER BY date ASC, id ASC) as display_id
+                    FROM expenses
+                    WHERE user_id = %s
+                ) x WHERE category = %s ORDER BY date DESC
+                """,
+                (user_id, category),
             )
             rows = cur.fetchall()
     return [_row_to_dict(r) for r in rows]
