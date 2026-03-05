@@ -5,6 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}Smart Expense Tracker{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 
@@ -20,6 +21,7 @@
             ☰
         </button>
         <ul class="nav-links" id="navLinks">
+            {% if session.user_id %}
             <li><a href="{{ url_for('index') }}"
                     class="{% if request.endpoint == 'index' %}active{% endif %}">Dashboard</a></li>
             <li><a href="{{ url_for('expenses') }}"
@@ -27,6 +29,24 @@
             <li><a href="{{ url_for('summary') }}"
                     class="{% if request.endpoint == 'summary' %}active{% endif %}">Summary</a></li>
             <li><a href="{{ url_for('add') }}" class="btn-nav-add">+ Add Expense</a></li>
+            <li class="nav-profile-menu">
+                <button class="profile-toggle-btn" id="profileDropdownBtn">
+                    {% if session.user_picture %}
+                    <img src="{{ session.user_picture }}" alt="Profile" class="nav-avatar">
+                    {% else %}
+                    <div class="nav-avatar-placeholder">{{ session.user_name[0] }}</div>
+                    {% endif %}
+                    <span class="nav-user-name">{{ session.user_name.split()[0] }}</span>
+                    <span class="dropdown-caret">▼</span>
+                </button>
+                <div class="dropdown-content" id="profileDropdownContent">
+                    <a href="{{ url_for('profile') }}">Profile</a>
+                    <a href="{{ url_for('logout') }}" class="text-danger">Sign Out</a>
+                </div>
+            </li>
+            {% else %}
+            <li><a href="{{ url_for('login') }}" class="btn-nav-login">Sign in with Google</a></li>
+            {% endif %}
         </ul>
     </nav>
 
@@ -48,7 +68,7 @@
 
     <!-- ── FOOTER ─────────────────────────────────── -->
     <footer class="footer">
-        <p>Smart Expense Tracker &copy; 2025 — Built with Flask + JSON Storage</p>
+        <p>Smart Expense Tracker &copy; 2025 — Built with Flask + PostgreSQL</p>
     </footer>
 
     <script>
@@ -59,6 +79,22 @@
             if (mobileMenuBtn && navLinks) {
                 mobileMenuBtn.addEventListener('click', () => {
                     navLinks.classList.toggle('show');
+                });
+            }
+
+            const profileDropdownBtn = document.getElementById('profileDropdownBtn');
+            const profileDropdownContent = document.getElementById('profileDropdownContent');
+
+            if (profileDropdownBtn && profileDropdownContent) {
+                profileDropdownBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    profileDropdownContent.classList.toggle('show');
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!profileDropdownBtn.contains(e.target) && !profileDropdownContent.contains(e.target)) {
+                        profileDropdownContent.classList.remove('show');
+                    }
                 });
             }
         });
